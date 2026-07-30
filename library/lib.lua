@@ -106,7 +106,7 @@ function field:Window(wcfg)
 	local storedSize = nil
 	local storedPos = nil
 
-	local screenGui, main, mainStroke, nav, navTitle, navHolder, top, search, cprov, notificationList, resizeGrip
+	local screenGui, main, mainStroke, nav, navTitle, navHolder, top, search, cprov, notificationList, resizeGrip, imageBGLabel
 
 	do
 		screenGui = New("ScreenGui", {
@@ -127,6 +127,15 @@ function field:Window(wcfg)
 			GroupTransparency = 0,
 		}, screenGui)
 
+		imageBGLabel = New("ImageLabel", {
+			BackgroundTransparency = 1,
+			Size = UDim2.new(1,0,1,0),
+			ImageTransparency = 0.65,
+			ImageColor3 = Color3.fromRGB(145,145,145),
+			Image = "rbxassetid://89022437662105",
+			Visible = false
+		}, screenGui)
+		
 		New("UICorner", { CornerRadius = UDim.new(0, 8) }, main)
 		mainStroke = New("UIStroke", { Color = Color3.fromRGB(27, 27, 39), Transparency = 0 }, main)
 
@@ -352,11 +361,30 @@ function field:Window(wcfg)
 		query = query:lower()
 		for _, section in pairs(activeTab.Sections) do
 			for _, row in pairs(section.Rows) do
+
+				-- Skip dropdown options container so it doesn't break if clicked during a search
+				if row.Instance.Name == "dropdownChildren" then
+					continue 
+				end
+
+				-- Hide separators while searching to keep the list clean
+				if row.Instance.Name == "separatorContainer" then
+					row.Instance.Visible = (query == "")
+					continue
+				end
+
+				-- Original finding logic
 				local titleLabel = row.Instance:FindFirstChild("title") or row.Instance:FindFirstChild("Frame", true)
 				if titleLabel and titleLabel:FindFirstChild("title") then
 					titleLabel = titleLabel:FindFirstChild("title")
 				end
-				local text = titleLabel and titleLabel.Text:lower() or ""
+
+				-- FIX: Safely check if the instance is actually a TextLabel/TextButton before reading .Text
+				local text = ""
+				if titleLabel and (titleLabel:IsA("TextLabel") or titleLabel:IsA("TextButton") or titleLabel:IsA("TextBox")) then
+					text = titleLabel.Text:lower()
+				end
+
 				row.Instance.Visible = (query == "") or text:find(query, 1, true) ~= nil
 			end
 		end
@@ -550,6 +578,8 @@ function field:Window(wcfg)
 			function section:Toggle(cfg)
 				cfg = cfg or {}
 				local state = cfg.Default or false
+				local hasDesc = cfg.Description ~= nil and cfg.Description ~= ""
+				local toggleHeight = hasDesc and 38 or 22 -- Expand height if there's a description
 
 				local toggle = New("TextButton", {
 					BorderSizePixel = 0,
@@ -560,7 +590,7 @@ function field:Window(wcfg)
 					BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 					FontFace = FontSourceSansRegular,
 					BackgroundTransparency = 1,
-					Size = UDim2.new(1, 0, 0, 22),
+					Size = UDim2.new(1, 0, 0, toggleHeight),
 					BorderColor3 = Color3.fromRGB(0, 0, 0),
 					Name = "toggle",
 				}, holder)
@@ -569,7 +599,7 @@ function field:Window(wcfg)
 					BorderSizePixel = 0,
 					BackgroundColor3 = state and Colors.ToggleOn or Colors.ToggleOff,
 					Size = UDim2.new(0, 24, 0, 14),
-					Position = UDim2.new(1, -24, 0.5, -7),
+					Position = UDim2.new(1, -24, 0.5, -7), -- 0.5 keeps it vertically centered
 					BorderColor3 = Color3.fromRGB(0, 0, 0),
 					Name = "bar",
 				}, toggle)
@@ -598,15 +628,36 @@ function field:Window(wcfg)
 					TextScaled = true,
 					BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 					FontFace = FontMontserratSemibold,
-					TextColor3 = Color3.fromRGB(131, 130, 135),
+					TextColor3 = Color3.fromRGB(240, 240, 240), -- Lighter color for main text
 					BackgroundTransparency = 1,
-					Size = UDim2.new(1, -30, 1, 0),
+					-- Adjust size and position based on description
+					Size = hasDesc and UDim2.new(1, -30, 0, 16) or UDim2.new(1, -30, 1, 0),
+					Position = hasDesc and UDim2.new(0, 0, 0, 2) or UDim2.new(0, 0, 0, 0),
 					BorderColor3 = Color3.fromRGB(0, 0, 0),
 					Text = cfg.Name or "Settings",
 					Name = "title",
-					Position = UDim2.new(0, 0, 0, 0),
 				}, toggle)
 				New("UITextSizeConstraint", { MaxTextSize = 14 }, title)
+
+				-- Generate Description Label
+				if hasDesc then
+					local desc = New("TextLabel", {
+						TextWrapped = true,
+						TextTruncate = Enum.TextTruncate.AtEnd,
+						BorderSizePixel = 0,
+						TextSize = 12,
+						TextXAlignment = Enum.TextXAlignment.Left,
+						BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+						Font = Enum.Font.Montserrat, -- Or FontMontserratRegular if you have it cached
+						TextColor3 = Color3.fromRGB(131, 130, 135), -- Dimmer for desc text
+						BackgroundTransparency = 1,
+						Size = UDim2.new(1, -30, 0, 14),
+						Position = UDim2.new(0, 0, 0, 20),
+						BorderColor3 = Color3.fromRGB(0, 0, 0),
+						Text = cfg.Description,
+						Name = "description",
+					}, toggle)
+				end
 
 				table.insert(section.Rows, { Instance = toggle })
 				updateSectionSize()
@@ -775,7 +826,10 @@ function field:Window(wcfg)
 			function section:Dropdown(cfg)
 				cfg = cfg or {}
 				local options = cfg.Options or {}
-				local selected = cfg.Default
+				-- Automatically fallback to the first option if cfg.Default isn't provided
+				local selected = cfg.Default or options[1] 
+				local hasDesc = cfg.Description ~= nil and cfg.Description ~= ""
+				local dropdownHeight = hasDesc and 50 or 36
 
 				local dropdown = New("TextButton", {
 					BorderSizePixel = 0,
@@ -786,7 +840,7 @@ function field:Window(wcfg)
 					BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 					FontFace = FontSourceSansRegular,
 					BackgroundTransparency = 1,
-					Size = UDim2.new(1, 0, 0, 36),
+					Size = UDim2.new(1, 0, 0, dropdownHeight),
 					BorderColor3 = Color3.fromRGB(0, 0, 0),
 					Name = "dropdown",
 				}, holder)
@@ -800,21 +854,41 @@ function field:Window(wcfg)
 					TextScaled = true,
 					BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 					FontFace = FontMontserratSemibold,
-					TextColor3 = Color3.fromRGB(131, 130, 135),
+					TextColor3 = Color3.fromRGB(240, 240, 240),
 					BackgroundTransparency = 1,
-					Size = UDim2.new(0.5, -5, 1, 0),
+					Size = hasDesc and UDim2.new(0.5, -5, 0, 16) or UDim2.new(0.5, -5, 1, 0),
+					Position = hasDesc and UDim2.new(0, 0, 0, 6) or UDim2.new(0, 0, 0, 0),
 					BorderColor3 = Color3.fromRGB(0, 0, 0),
 					Text = cfg.Name or "Settings",
 					Name = "title",
-					Position = UDim2.new(0, 0, 0, 0),
 				}, dropdown)
 				New("UITextSizeConstraint", { MaxTextSize = 14 }, title)
+
+				if hasDesc then
+					local desc = New("TextLabel", {
+						TextWrapped = true,
+						TextTruncate = Enum.TextTruncate.AtEnd,
+						BorderSizePixel = 0,
+						TextSize = 12,
+						TextXAlignment = Enum.TextXAlignment.Left,
+						BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+						Font = Enum.Font.Montserrat,
+						TextColor3 = Color3.fromRGB(131, 130, 135),
+						BackgroundTransparency = 1,
+						Size = UDim2.new(0.5, -5, 0, 14),
+						Position = UDim2.new(0, 0, 0, 26),
+						BorderColor3 = Color3.fromRGB(0, 0, 0),
+						Text = cfg.Description,
+						Name = "description",
+					}, dropdown)
+				end
 
 				local box = New("Frame", {
 					BorderSizePixel = 0,
 					BackgroundColor3 = Color3.fromRGB(10, 10, 14),
-					Size = UDim2.new(0.48, 0, 0.7, 0),
-					Position = UDim2.new(0.52, 0, 0.15, 0),
+					Size = UDim2.new(0.48, 0, 0, 26),
+					AnchorPoint = Vector2.new(0, 0.5),
+					Position = UDim2.new(0.52, 0, 0.5, 0),
 					BorderColor3 = Color3.fromRGB(0, 0, 0),
 				}, dropdown)
 				New("UIStroke", { Color = Color3.fromRGB(27, 27, 39) }, box)
@@ -871,6 +945,14 @@ function field:Window(wcfg)
 				local open = false
 				local api = {}
 
+				-- Centralized apply function to handle logic updates instantly
+				local function apply(val, fire)
+					selected = val
+					boxTitle.Text = tostring(val or "None")
+					if cfg.Flag then wind.Flags[cfg.Flag] = val end
+					if fire and cfg.Callback then task.spawn(cfg.Callback, val) end
+				end
+
 				local function rebuildOptions()
 					for _, c in pairs(childrenFrame:GetChildren()) do
 						if c:IsA("TextButton") then c:Destroy() end
@@ -889,10 +971,7 @@ function field:Window(wcfg)
 							LayoutOrder = i,
 						}, childrenFrame)
 						optBtn.MouseButton1Click:Connect(function()
-							selected = opt
-							boxTitle.Text = tostring(opt)
-							if cfg.Flag then wind.Flags[cfg.Flag] = opt end
-							if cfg.Callback then task.spawn(cfg.Callback, opt) end
+							apply(opt, true) -- Fire callback when clicked manually
 							open = false
 							Tween(dropdownChildren, { Size = UDim2.new(1, 0, 0, 0) }, 0.18)
 						end)
@@ -908,26 +987,44 @@ function field:Window(wcfg)
 
 				dropdownChildren:GetPropertyChangedSignal("Size"):Connect(updateSectionSize)
 
-				function api:Set(v)
-					selected = v
-					boxTitle.Text = tostring(v)
-					if cfg.Flag then wind.Flags[cfg.Flag] = v end
-				end
+				function api:Set(v) apply(v, false) end
 				function api:Get() return selected end
 				function api:Refresh(newOptions, keepSelection)
 					options = newOptions
 					if not keepSelection then
-						selected = nil
-						boxTitle.Text = "Settings"
+						apply(options[1], false)
 					end
 					rebuildOptions()
 				end
 
 				if cfg.Flag then
-					wind.Flags[cfg.Flag] = selected
 					wind.Elements[cfg.Flag] = api
 				end
+
+				-- Enforce default state load when library initializes
+				apply(selected, false)
+
 				return api
+			end
+			
+			function section:Separator()
+				local sepContainer = New("Frame", {
+					BackgroundTransparency = 1,
+					Size = UDim2.new(1, 0, 0, 10), -- Overall padding height
+					Name = "separatorContainer"
+				}, holder)
+
+				local line = New("Frame", {
+					BorderSizePixel = 0,
+					BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+					BackgroundTransparency = 0.92, -- Faint visibility
+					Size = UDim2.new(1, 0, 0, 1),
+					Position = UDim2.new(0, 0, 0.5, 0), -- Centered vertically
+					Name = "line"
+				}, sepContainer)
+
+				table.insert(section.Rows, { Instance = sepContainer })
+				updateSectionSize()
 			end
 
 			function section:TextBox(cfg)
@@ -1197,6 +1294,19 @@ function field:Window(wcfg)
 
 	function wind:Destroy()
 		screenGui:Destroy()
+	end
+
+	function wind:EditBackgroundImg(...)
+		local cfg = ...
+		local properties = cfg["Properties"]
+
+		if properties and type(properties) == "table" then
+			for propName, propValue in pairs(properties) do
+				pcall(function()
+					imageBGLabel[propName] = propValue
+				end)
+			end
+		end
 	end
 
 	return wind
