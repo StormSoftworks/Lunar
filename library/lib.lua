@@ -306,6 +306,7 @@ function field:Window(wcfg)
 			)
 
 			Tween(mainStroke, { Transparency = 1 }, 0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+			wind:Notification({Text = "Gui has opened", Duration = 1.5})
 			local tw = Tween(main, { GroupTransparency = 1, Size = targetSize, Position = targetPos }, 0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 			tw.Completed:Wait()
 			main.Visible = false
@@ -314,6 +315,7 @@ function field:Window(wcfg)
 			isVisible = true
 
 			Tween(mainStroke, { Transparency = 0 }, 0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+			wind:Notification({Text = "Gui has closed", Duration = 1.5})
 			local tw = Tween(main, {
 				GroupTransparency = 0,
 				Size = storedSize or main.Size,
