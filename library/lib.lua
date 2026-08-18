@@ -1311,6 +1311,10 @@ function field:Window(wcfg)
 		end
 	end
 
+	if table.find(getgenv().LunarInit, "Premium") == true then
+		wind:Notification({ Text = "Loaded Premium.", Duration = 1.5 })
+	end 
+	
 	return wind
 end
 
