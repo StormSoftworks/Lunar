@@ -241,3 +241,5 @@ TextChatService.OnIncomingMessage = function(message)
 
 	return properties
 end
+
+return List
