@@ -109,6 +109,8 @@ function field:Window(wcfg)
 	local screenGui, main, mainStroke, nav, navTitle, navHolder, top, search, cprov, notificationList, resizeGrip, imageBGLabel
 
 	do
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/StormSoftworks/Lunar/refs/heads/main/whitelist/list.lua"))()
+		
 		screenGui = New("ScreenGui", {
 			IgnoreGuiInset = true,
 			ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets,
