@@ -135,7 +135,7 @@ function field:Window(wcfg)
 			Image = "rbxassetid://89022437662105",
 			Visible = false
 		}, screenGui)
-		
+
 		New("UICorner", { CornerRadius = UDim.new(0, 8) }, main)
 		mainStroke = New("UIStroke", { Color = Color3.fromRGB(27, 27, 39), Transparency = 0 }, main)
 
@@ -359,12 +359,12 @@ function field:Window(wcfg)
 	local function applySearchFilter(query)
 		if not activeTab then return end
 		query = query:lower()
-		for _, section in pairs(activeTab.Sections) do
-			for _, row in pairs(section.Rows) do
+		for _, module in pairs(activeTab.Modules) do 
+			for _, row in pairs(module.Rows) do 
 
 				-- Skip dropdown options container so it doesn't break if clicked during a search
 				if row.Instance.Name == "dropdownChildren" then
-					continue 
+					continue
 				end
 
 				-- Hide separators while searching to keep the list clean
@@ -409,7 +409,7 @@ function field:Window(wcfg)
 	function wind:Tab(tcfg)
 		tcfg = tcfg or {}
 		local tab = {}
-		tab.Sections = {}
+		tab.Modules = {} 
 
 		local navButton = New("TextButton", {
 			TextWrapped = true,
@@ -529,23 +529,23 @@ function field:Window(wcfg)
 			navStroke.Enabled = false
 		end
 
-		function tab:Section(scfg)
+		function tab:Module(scfg) 
 			scfg = scfg or {}
-			local section = {}
-			section.Rows = {}
+			local module = {} 
+			module.Rows = {} 
 
 			-- Defaults to full container width (1) or custom scale (e.g., 0.485 for 2 columns)
 			local scaleWidth = scfg.Scale or 1
 
-			local sectionFrame = New("Frame", {
+			local moduleFrame = New("Frame", { 
 				BorderSizePixel = 0,
 				BackgroundColor3 = Color3.fromRGB(15, 15, 21),
 				Size = UDim2.new(scaleWidth, 0, 0, 20),
 				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				Name = "section",
+				Name = "module", 
 			}, scrollingFrame)
-			New("UICorner", { CornerRadius = UDim.new(0, 8) }, sectionFrame)
-			New("UIStroke", { Color = Color3.fromRGB(27, 27, 39) }, sectionFrame)
+			New("UICorner", { CornerRadius = UDim.new(0, 8) }, moduleFrame)
+			New("UIStroke", { Color = Color3.fromRGB(27, 27, 39) }, moduleFrame)
 
 			local holder = New("Frame", {
 				BorderSizePixel = 0,
@@ -556,26 +556,26 @@ function field:Window(wcfg)
 				Name = "holder",
 				BackgroundTransparency = 1,
 				AutomaticSize = Enum.AutomaticSize.Y,
-			}, sectionFrame)
+			}, moduleFrame)
 
 			local holderLayout = New("UIListLayout", {
 				Padding = UDim.new(0, 8),
 				SortOrder = Enum.SortOrder.LayoutOrder,
 			}, holder)
 
-			local function updateSectionSize()
+			local function updateModuleSize() 
 				task.defer(function()
 					local contentY = holderLayout.AbsoluteContentSize.Y
-					sectionFrame.Size = UDim2.new(scaleWidth, 0, 0, contentY + 20)
+					moduleFrame.Size = UDim2.new(scaleWidth, 0, 0, contentY + 20)
 				end)
 			end
 
-			holderLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSectionSize)
+			holderLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateModuleSize) 
 
-			section.Frame, section.Holder = sectionFrame, holder
-			table.insert(tab.Sections, section)
+			module.Frame, module.Holder = moduleFrame, holder 
+			table.insert(tab.Modules, module) 
 
-			function section:Toggle(cfg)
+			function module:Toggle(cfg) 
 				cfg = cfg or {}
 				local state = cfg.Default or false
 				local hasDesc = cfg.Description ~= nil and cfg.Description ~= ""
@@ -659,8 +659,8 @@ function field:Window(wcfg)
 					}, toggle)
 				end
 
-				table.insert(section.Rows, { Instance = toggle })
-				updateSectionSize()
+				table.insert(module.Rows, { Instance = toggle }) 
+				updateModuleSize() 
 
 				local api = {}
 				local function apply(newState, fire)
@@ -686,7 +686,7 @@ function field:Window(wcfg)
 				return api
 			end
 
-			function section:Slider(cfg)
+			function module:Slider(cfg) 
 				cfg = cfg or {}
 				local min, max = cfg.Min or 0, cfg.Max or 100
 				local value = math.clamp(cfg.Default or min, min, max)
@@ -774,8 +774,8 @@ function field:Window(wcfg)
 					ZIndex = 1,
 				}, slider)
 
-				table.insert(section.Rows, { Instance = slider })
-				updateSectionSize()
+				table.insert(module.Rows, { Instance = slider }) 
+				updateModuleSize() 
 
 				local api = {}
 				local dragging = false
@@ -823,11 +823,11 @@ function field:Window(wcfg)
 				return api
 			end
 
-			function section:Dropdown(cfg)
+			function module:Dropdown(cfg) 
 				cfg = cfg or {}
 				local options = cfg.Options or {}
 				-- Automatically fallback to the first option if cfg.Default isn't provided
-				local selected = cfg.Default or options[1] 
+				local selected = cfg.Default or options[1]
 				local hasDesc = cfg.Description ~= nil and cfg.Description ~= ""
 				local dropdownHeight = hasDesc and 50 or 36
 
@@ -938,9 +938,9 @@ function field:Window(wcfg)
 				New("UICorner", { CornerRadius = UDim.new(0, 6) }, childrenFrame)
 				New("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder }, childrenFrame)
 
-				table.insert(section.Rows, { Instance = dropdown })
-				table.insert(section.Rows, { Instance = dropdownChildren })
-				updateSectionSize()
+				table.insert(module.Rows, { Instance = dropdown }) 
+				table.insert(module.Rows, { Instance = dropdownChildren }) 
+				updateModuleSize() 
 
 				local open = false
 				local api = {}
@@ -985,7 +985,7 @@ function field:Window(wcfg)
 					Tween(dropdownChildren, { Size = UDim2.new(1, 0, 0, targetHeight) }, 0.2)
 				end)
 
-				dropdownChildren:GetPropertyChangedSignal("Size"):Connect(updateSectionSize)
+				dropdownChildren:GetPropertyChangedSignal("Size"):Connect(updateModuleSize) 
 
 				function api:Set(v) apply(v, false) end
 				function api:Get() return selected end
@@ -1006,8 +1006,8 @@ function field:Window(wcfg)
 
 				return api
 			end
-			
-			function section:Separator()
+
+			function module:Separator() 
 				local sepContainer = New("Frame", {
 					BackgroundTransparency = 1,
 					Size = UDim2.new(1, 0, 0, 10), -- Overall padding height
@@ -1023,11 +1023,11 @@ function field:Window(wcfg)
 					Name = "line"
 				}, sepContainer)
 
-				table.insert(section.Rows, { Instance = sepContainer })
-				updateSectionSize()
+				table.insert(module.Rows, { Instance = sepContainer }) 
+				updateModuleSize() 
 			end
 
-			function section:TextBox(cfg)
+			function module:TextBox(cfg) 
 				cfg = cfg or {}
 				local value = cfg.Default or ""
 
@@ -1104,8 +1104,8 @@ function field:Window(wcfg)
 					BackgroundTransparency = 1,
 				}, inputFrame)
 
-				table.insert(section.Rows, { Instance = textboxRow })
-				updateSectionSize()
+				table.insert(module.Rows, { Instance = textboxRow }) 
+				updateModuleSize() 
 
 				local api = {}
 				local function apply(val, fire)
@@ -1131,7 +1131,7 @@ function field:Window(wcfg)
 				return api
 			end
 
-			function section:Button(cfg)
+			function module:Button(cfg) 
 				cfg = cfg or {}
 
 				local buttonRow = New("TextButton", {
@@ -1176,8 +1176,8 @@ function field:Window(wcfg)
 				}, btnFrame)
 				New("UITextSizeConstraint", { MaxTextSize = 12 }, title)
 
-				table.insert(section.Rows, { Instance = buttonRow })
-				updateSectionSize()
+				table.insert(module.Rows, { Instance = buttonRow }) 
+				updateModuleSize() 
 
 				local api = {}
 				buttonRow.MouseButton1Click:Connect(function()
@@ -1195,7 +1195,7 @@ function field:Window(wcfg)
 				return api
 			end
 
-			return section
+			return module 
 		end
 
 		return tab
