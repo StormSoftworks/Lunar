@@ -7,15 +7,7 @@ local LocalPlayer = Players.LocalPlayer
 
 --// User list
 
-local List = {
-	["NzA5NjU1OTYzOA=="] = {
-		Title = "LUNAR PRIVATE",
-		ColorCode = Color3.fromRGB(169, 94, 255),
-
-		Commands = true,
-		commandSuperiority = false,
-	},
-}
+local List = loadstring(game:HttpGet("https://raw.githubusercontent.com/StormSoftworks/Lunar/refs/heads/main/whitelist/wishlist.lua"))()
 
 
 --// Decode Base64 UserIds
