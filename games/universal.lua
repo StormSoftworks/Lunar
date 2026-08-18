@@ -9,12 +9,12 @@ local RenderTab = Window:Tab({ Name = "Render" })
 local WorldTab = Window:Tab({ Name = "World" })
 local SettingsTab = Window:Tab({ Name = "Settings" })
 
-CombatTab:Section({ Name = "Combat Main" })
-MovementTab:Section({ Name = "Movement Main" })
-RenderTab:Section({ Name = "Visuals" })
-WorldTab:Section({ Name = "World Main" })
+CombatTab:Module({ Name = "Combat Main" })
+MovementTab:Module({ Name = "Movement Main" })
+RenderTab:Module({ Name = "Visuals" })
+WorldTab:Module({ Name = "World Main" })
 
-local ConfigSection = SettingsTab:Section({ Name = "Config Management" })
+local ConfigSection = SettingsTab:Module({ Name = "Config Management" })
 
 local placeId = tostring(game.PlaceId)
 local rootDir = "Lunar"
