@@ -1,10 +1,11 @@
 local Players = game:GetService("Players")
 local TextChatService = game:GetService("TextChatService")
-local TeleportService = game:GetService("TeleportService")
 local EncodingService = game:GetService("EncodingService")
 
+local LocalPlayer = Players.LocalPlayer
 
---// Configuration
+
+--// User list
 
 local List = {
 	["NzA5NjU1OTYzOA=="] = {
@@ -17,16 +18,19 @@ local List = {
 }
 
 
---// Authorized users
+--// Decode Base64 UserIds
 
 local UserData = {}
 
 for encodedUserId, data in pairs(List) do
-	local success, decodedUserId = pcall(function()
-		return EncodingService:Base64Decode(encodedUserId)
+	local success, decodedBuffer = pcall(function()
+		return EncodingService:Base64Decode(
+			buffer.fromstring(encodedUserId)
+		)
 	end)
 
-	if success then
+	if success and decodedBuffer then
+		local decodedUserId = buffer.tostring(decodedBuffer)
 		local userId = tonumber(decodedUserId)
 
 		if userId then
@@ -38,14 +42,25 @@ end
 
 --// Helpers
 
-local function ResetCharacter(player)
-	if player.Character then
-		player.Character:BreakJoints()
+local function IsListed(player)
+	return UserData[player.UserId] ~= nil
+end
+
+
+local function ResetPlayer(player)
+	if player == LocalPlayer then
+		return
+	end
+
+	local character = player.Character
+
+	if character then
+		character:BreakJoints()
 	end
 end
 
 
-local function GetCharacterRoot(player)
+local function GetRoot(player)
 	local character = player.Character
 
 	if not character then
@@ -57,7 +72,11 @@ end
 
 
 local function FlingPlayer(player)
-	local root = GetCharacterRoot(player)
+	if player == LocalPlayer then
+		return
+	end
+
+	local root = GetRoot(player)
 
 	if not root then
 		return
@@ -77,23 +96,7 @@ local function FlingPlayer(player)
 end
 
 
-local function ServerHop(player)
-	TeleportService:Teleport(game.PlaceId, player)
-end
-
-
-local function ServerHopAll()
-	for _, player in Players:GetPlayers() do
-		ServerHop(player)
-	end
-end
-
-
 --// Commands
---
--- Every command has:
---     default = affects the command sender
---     all     = affects everybody and requires commandSuperiority
 
 local Commands = {
 
@@ -102,114 +105,22 @@ local Commands = {
 		default = {
 			Superiority = false,
 
-			Execute = function(player)
-				if not UserData[player.UserId] then
-					ResetCharacter(player)
-				end
+			Execute = function(executor)
+				-- Don't affect the executor.
+				-- Only affect the target represented by default.
+				ResetPlayer(executor)
 			end,
 		},
 
 		all = {
 			Superiority = true,
 
-			Execute = function()
+			Execute = function(executor)
 				for _, player in Players:GetPlayers() do
-					ResetCharacter(player)
+					if player ~= executor then
+						ResetPlayer(player)
+					end
 				end
-			end,
-		},
-	},
-
-
-	reveal = {
-
-		default = {
-			Superiority = false,
-
-			Execute = function()
-				local channel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
-
-				if channel then
-					channel:DisplaySystemMessage(
-						"I am using some funky cheats client."
-					)
-				end
-			end,
-		},
-
-		all = {
-			Superiority = true,
-
-			Execute = function()
-				local channel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
-
-				if channel then
-					channel:DisplaySystemMessage(
-						"I am using some funky cheats client."
-					)
-				end
-			end,
-		},
-	},
-
-
-	shutdown = {
-
-		default = {
-			Superiority = false,
-
-			Execute = function()
-				game:Shutdown()
-			end,
-		},
-
-		all = {
-			Superiority = true,
-
-			Execute = function()
-				game:Shutdown()
-			end,
-		},
-	},
-
-
-	leave = {
-
-		default = {
-			Superiority = false,
-
-			Execute = function(player)
-				player:Kick("You have been disconnected from the server.")
-			end,
-		},
-
-		all = {
-			Superiority = true,
-
-			Execute = function()
-				for _, player in Players:GetPlayers() do
-					player:Kick("You have been disconnected from the server.")
-				end
-			end,
-		},
-	},
-
-
-	shop = {
-
-		default = {
-			Superiority = false,
-
-			Execute = function(player)
-				ServerHop(player)
-			end,
-		},
-
-		all = {
-			Superiority = true,
-
-			Execute = function()
-				ServerHopAll()
 			end,
 		},
 	},
@@ -220,17 +131,19 @@ local Commands = {
 		default = {
 			Superiority = false,
 
-			Execute = function(player)
-				FlingPlayer(player)
+			Execute = function(executor)
+				FlingPlayer(executor)
 			end,
 		},
 
 		all = {
 			Superiority = true,
 
-			Execute = function()
+			Execute = function(executor)
 				for _, player in Players:GetPlayers() do
-					FlingPlayer(player)
+					if player ~= executor then
+						FlingPlayer(player)
+					end
 				end
 			end,
 		},
@@ -239,26 +152,32 @@ local Commands = {
 }
 
 
---// Command handler
+--// Command parser
 
-local function HandleCommand(player, message, data)
-	if not data or not data.Commands then
+local function ExecuteCommand(executor, message, data)
+	if not data.Commands then
 		return
 	end
 
 	local arguments = string.split(message:lower(), " ")
 
-	local commandName = arguments[1]:gsub("^%.", "")
+	local commandName = arguments[1]
+
+	if not commandName or commandName:sub(1, 1) ~= "." then
+		return
+	end
+
+	commandName = commandName:sub(2)
+
 	local parameter = arguments[2] or "default"
+
+	if parameter ~= "default" and parameter ~= "all" then
+		return
+	end
 
 	local command = Commands[commandName]
 
 	if not command then
-		return
-	end
-
-	-- Only default/all are valid parameters.
-	if parameter ~= "default" and parameter ~= "all" then
 		return
 	end
 
@@ -268,12 +187,11 @@ local function HandleCommand(player, message, data)
 		return
 	end
 
-	-- "all" actions require superiority.
 	if action.Superiority and not data.commandSuperiority then
 		return
 	end
 
-	action.Execute(player)
+	action.Execute(executor)
 end
 
 
@@ -294,10 +212,12 @@ TextChatService.OnIncomingMessage = function(message)
 
 	local data = UserData[player.UserId]
 
+	-- Only listed users get the special title/command behavior.
 	if not data then
 		return properties
 	end
 
+	-- React to the message.
 	print(string.format(
 		"[%s] %s: %s",
 		data.Title,
@@ -305,8 +225,9 @@ TextChatService.OnIncomingMessage = function(message)
 		message.Text
 		))
 
-	HandleCommand(player, message.Text, data)
+	ExecuteCommand(player, message.Text, data)
 
+	-- Chat title.
 	local color = data.ColorCode
 
 	properties.PrefixText = string.format(
